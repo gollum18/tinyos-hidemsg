@@ -1,0 +1,2 @@
+COMPONENT=HideMsgC
+include $(MAKERULES)
