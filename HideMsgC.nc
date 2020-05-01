@@ -1,30 +1,48 @@
-#ifndef TEST_COMM_H
-#define TEST_COMM_H
+#include "HideMsg.h"
 
-#define DATASIZE 20
-#define AM_UART_ADDR 0xFFFF
+// configuration
+configuration HideMsgC
+{}
 
-#define SRC_NODE 10
-#define DST_NODE 50
-
-#define MAGIC 0xDEADBEEF
-#define ENC_KEY 3
-#define NXT_N 5
-#define DST_N 10
-
-typedef struct CommMsg
+// implementation
+implementation
 {
-  uint8_t cmd0; // counter
-  uint8_t cmd1; // sequence number
-  uint16_t nxt_addr;
-  uint16_t dst_addr;
-  uint8_t data[DATASIZE];
-} CommMsg;
+    // use these components
+  components MainC, HideMsgM, LedsC, RandomC;
+  // Timers
+  components new TimerMilliC() as Timer0;
+  components new TimerMilliC() as RelayTimer;
+  components new TimerMilliC() as DbgTimer;
 
-// Active Message type for debugging messages
-enum {
-  AM_DBGMSG = 30,
-  AM_CommMSG = 51
-};
+  // Radio
+  components new AMSenderC(AM_CommMSG);
+  components new AMReceiverC(AM_CommMSG);
+  components ActiveMessageC as Radio;
 
-#endif
+  // Serial
+  components new SerialAMSenderC(AM_DBGMSG);
+  components SerialActiveMessageC as Serial;
+
+
+  // wire up module
+  MainC.Boot <- HideMsgM.Boot;
+  HideMsgM.AMControl -> Radio;
+  HideMsgM.SerialControl -> Serial;
+  
+  HideMsgM.RadioSend -> AMSenderC.AMSend;
+  HideMsgM.Receive -> AMReceiverC;
+  HideMsgM.RadioPacket -> AMSenderC;
+
+  HideMsgM.SerialSend -> SerialAMSenderC.AMSend;
+
+  // wire up LEDs
+  HideMsgM.Leds -> LedsC;
+
+  // wire up PRNG
+  HideMsgM.Random -> RandomC;
+
+  // wire up timers
+  HideMsgM.Timer0 -> Timer0;
+  HideMsgM.RelayTimer -> RelayTimer;
+  HideMsgM.DbgTimer -> DbgTimer;
+}
